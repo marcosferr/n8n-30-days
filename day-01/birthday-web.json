@@ -1,0 +1,190 @@
+{
+  "name": "Birthday WhatsApp Notifications - WhatsApp-Web.js",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "value": "0 9 * * *"
+            }
+          ]
+        },
+        "timezone": "America/Argentina/Buenos_Aires"
+      },
+      "id": "1",
+      "name": "Cron Trigger",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": "YOUR_GOOGLE_SHEET_ID",
+        "sheetName": "Sheet1",
+        "options": {
+          "rangeProperties": {
+            "range": "A:E"
+          }
+        }
+      },
+      "id": "2",
+      "name": "Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get today's date in Buenos Aires timezone\nconst today = new Date();\nconst todayString = today.toISOString().split('T')[0];\n\n// Get the current month and day\nconst currentMonth = today.getMonth() + 1;\nconst currentDay = today.getDate();\n\n// Filter items for birthday matches\nconst birthdayMatches = [];\n\nfor (const item of $input.all()) {\n  const data = item.json;\n  \n  // Skip if any required field is missing\n  if (!data.Nombre || !data.Apellido || !data.Fecha_Nacimiento || !data.Numero_Telefonico || !data.Template) {\n    continue;\n  }\n  \n  // Parse the birthday date (assuming format YYYY-MM-DD or MM/DD/YYYY)\n  let birthday;\n  const dateString = data.Fecha_Nacimiento;\n  \n  if (dateString.includes('/')) {\n    // Format MM/DD/YYYY\n    const [month, day, year] = dateString.split('/');\n    birthday = new Date(year, month - 1, day);\n  } else if (dateString.includes('-')) {\n    // Format YYYY-MM-DD\n    birthday = new Date(dateString);\n  } else {\n    continue; // Skip invalid date formats\n  }\n  \n  // Check if today is the birthday\n  if (birthday.getMonth() + 1 === currentMonth && birthday.getDate() === currentDay) {\n    // Calculate age\n    const age = today.getFullYear() - birthday.getFullYear();\n    \n    // Render the Jinja template (simplified - replace with actual Jinja if needed)\n    let message = data.Template;\n    message = message.replace(/\\{\\{\\s*nombre\\s*\\}\\}/gi, data.Nombre);\n    message = message.replace(/\\{\\{\\s*apellido\\s*\\}\\}/gi, data.Apellido);\n    message = message.replace(/\\{\\{\\s*edad\\s*\\}\\}/gi, age.toString());\n    \n    birthdayMatches.push({\n      nombre: data.Nombre,\n      apellido: data.Apellido,\n      numero_telefonico: data.Numero_Telefonico,\n      edad: age,\n      mensaje: message\n    });\n  }\n}\n\nreturn birthdayMatches.map(match => ({ json: match }));"
+      },
+      "id": "3",
+      "name": "Filter Birthday Matches",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{ $json.nombre }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "4",
+      "name": "Check if Birthday Found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/send-message",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"to\": \"{{ $json.numero_telefonico }}\",\n  \"message\": \"{{ $json.mensaje }}\"\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "5",
+      "name": "Send WhatsApp Message via HTTP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log that no birthdays were found today\nconsole.log('No birthdays found for today');\nreturn { json: { message: 'No birthdays found for today' } };"
+      },
+      "id": "6",
+      "name": "No Birthdays Found",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log the response from the WhatsApp server\nconst response = $input.first().json;\nconsole.log('WhatsApp message sent successfully:', response);\nreturn { json: { ...response, sent_at: new Date().toISOString() } };"
+      },
+      "id": "7",
+      "name": "Log Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 200]
+    }
+  ],
+  "connections": {
+    "Cron Trigger": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Filter Birthday Matches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Birthday Matches": {
+      "main": [
+        [
+          {
+            "node": "Check if Birthday Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Birthday Found": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Message via HTTP",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Birthdays Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp Message via HTTP": {
+      "main": [
+        [
+          {
+            "node": "Log Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2025-01-20T12:00:00.000Z",
+  "updatedAt": "2025-01-20T12:00:00.000Z",
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

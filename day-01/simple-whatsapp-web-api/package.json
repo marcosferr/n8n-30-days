@@ -1,0 +1,26 @@
+{
+  "name": "whatsapp-express-api",
+  "version": "1.0.0",
+  "description": "API de WhatsApp usando Express y whatsapp-web.js",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "whatsapp-web.js": "^1.23.0",
+    "qrcode-terminal": "^0.12.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "whatsapp",
+    "express",
+    "api",
+    "nodejs"
+  ],
+  "author": "",
+  "license": "MIT"
+}
