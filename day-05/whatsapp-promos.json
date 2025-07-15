@@ -1,0 +1,92 @@
+{
+  "name": "WhatsApp Promos Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "cronExpression": "0 9 * * *"
+      },
+      "id": "cron-trigger",
+      "name": "Cron Trigger",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "sheetId": "{{ $env.SHEET_ID_PROMOS }}",
+        "range": "A:C"
+      },
+      "id": "read-promos",
+      "name": "Read Promos Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 2,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.filter(item => item.json.Fecha === $now.format('YYYY-MM-DD'));"
+      },
+      "id": "filter-date",
+      "name": "Filter by Date",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "sheetId": "{{ $env.SHEET_ID_CLIENTES }}",
+        "range": "A:C"
+      },
+      "id": "read-clients",
+      "name": "Read Clients Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 2,
+      "position": [800, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const promo = $item(0).json; return items.map(client => ({ json: { ...client.json, ...promo } }));"
+      },
+      "id": "merge-data",
+      "name": "Merge Promo & Client",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendTemplate",
+        "from": "{{ $env.WHATSAPP_NUMBER_ID }}",
+        "to": "={{$json['Numero_Telefono']}}",
+        "templateName": "={{$json['Plantilla']}}",
+        "templateLanguage": "es_MX",
+        "templateParameters": ["={{$json['Nombre']}}", "={{$json['Apellido']}}"]
+      },
+      "id": "send-whatsapp",
+      "name": "Send WhatsApp Promo",
+      "type": "n8n-nodes-base.whatsappBusinessCloud",
+      "typeVersion": 1,
+      "position": [1200, 300]
+    }
+  ],
+  "connections": {
+    "cron-trigger": {
+      "main": [[{ "node": "read-promos", "type": "main", "index": 0 }]]
+    },
+    "read-promos": {
+      "main": [[{ "node": "filter-date", "type": "main", "index": 0 }]]
+    },
+    "filter-date": {
+      "main": [[{ "node": "read-clients", "type": "main", "index": 0 }]]
+    },
+    "read-clients": {
+      "main": [[{ "node": "merge-data", "type": "main", "index": 0 }]]
+    },
+    "merge-data": {
+      "main": [[{ "node": "send-whatsapp", "type": "main", "index": 0 }]]
+    }
+  }
+}

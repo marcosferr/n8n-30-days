@@ -1,0 +1,416 @@
+{
+  "name": "Email Classification + Trello",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes"
+            }
+          ]
+        }
+      },
+      "id": "45a5b3ce-342e-429a-b506-083653edaf1b",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [-1328, 192]
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ json.id }}",
+        "labelIds": ["DRAFT"]
+      },
+      "id": "8f21b6a9-5f2a-4c9c-bf1d-bde3d4855c32",
+      "name": "Gmail - Add Ventas Label",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [-352, -96],
+      "webhookId": "3e9a0974-52db-49a1-9d88-17a3e09b29ce",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "SFD2oK3IjhEc7w6b",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": ["Label_1845915805382656689"]
+      },
+      "id": "ae9d0ba5-c82c-4b3d-a99d-4d7dd117a054",
+      "name": "Gmail - Add Soporte Label",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [-352, 48],
+      "webhookId": "20645c12-3675-414e-8e61-4ec468e2e73e",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "SFD2oK3IjhEc7w6b",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": ["Label_Reclamo"]
+      },
+      "id": "e029d319-3168-4526-bb90-03049a29ab7f",
+      "name": "Gmail - Add Reclamo Label",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [-352, 480],
+      "webhookId": "86ba71dd-0a74-4851-baba-e90f82cbb8da",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "SFD2oK3IjhEc7w6b",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": ["Label_5796477116315715839"]
+      },
+      "id": "bdbd6085-d01f-4a4f-9e7b-84f73f86c0f7",
+      "name": "Gmail - Add Otros Label",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [-352, 336],
+      "webhookId": "23c2df40-2edf-4ae7-8b2d-8e8e502b2971",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "SFD2oK3IjhEc7w6b",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputText": "={{ $json.Subject }}",
+        "categories": {
+          "categories": [
+            {
+              "category": "Soporte",
+              "description": "Support Tasks. Processes or problems with a product"
+            },
+            {
+              "category": "Ventas",
+              "description": "Needs information about my services"
+            },
+            {
+              "category": "Reclamo",
+              "description": "Has a problem to notify. Problems using my product"
+            },
+            {
+              "category": "Otros",
+              "description": "Others"
+            },
+            {
+              "category": "Estimación",
+              "description": "Needs a new Estimación for a new development"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textClassifier",
+      "typeVersion": 1.1,
+      "position": [-880, 144],
+      "id": "55c47e91-3888-4d28-bf9a-6014ab3fa4c0",
+      "name": "Text Classifier"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [-672, 368],
+      "id": "5be0feec-f555-4b42-b956-10a8e21b7503",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "jRLAmGJUm7livQjY",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 1,
+        "filters": {
+          "labelIds": ["INBOX"],
+          "q": "is:unread"
+        }
+      },
+      "id": "42a50ad5-3c19-474b-a04e-1391eb49a842",
+      "name": "Gmail - Get Unread Messages",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [-1104, 192],
+      "webhookId": "495d1f1e-19e6-4d81-b312-718965355810",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "SFD2oK3IjhEc7w6b",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "removeLabels",
+        "messageId": "={{ $('Gmail - Get Unread Messages').item.json.id }}",
+        "labelIds": "=INBOX"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [624, 176],
+      "id": "7797924d-45e8-4434-9067-df436fd02c08",
+      "name": "Remove label from message",
+      "webhookId": "e6896656-79b9-4cd1-9013-1360b6f9a46d",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "SFD2oK3IjhEc7w6b",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": ["STARRED"]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [-352, 192],
+      "id": "b62cef2c-d02b-4cb0-8c72-22e08b9a1bd0",
+      "name": "Add Estimación to message",
+      "webhookId": "e04168f7-618a-4020-8adc-035b8e300d6d",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "SFD2oK3IjhEc7w6b",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.17.0.1:3000/send-message",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"to\": \"595985609659\",\n  \"message\": \"{{ $('Text Classifier').item.json.Subject }} FROM {{ $('Text Classifier').item.json.From }} \n\"\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "afd316e5-0322-4690-a95c-2034fc7e0535",
+      "name": "Send WhatsApp Message via HTTP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-96, 64]
+    },
+    {
+      "parameters": {
+        "listId": "63c99255e9f59801d870af71",
+        "name": "Ticket Soporte - {{ $('Gmail - Get Unread Messages').item.json.snippet }}",
+        "description": "Ticket de Soporte para {{ $('Gmail - Get Unread Messages').item.json.FROM }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.trello",
+      "typeVersion": 1,
+      "position": [144, 80],
+      "id": "ddcb06d2-65fd-4241-a2e8-3cd3e024b4c3",
+      "name": "Create a card",
+      "credentials": {
+        "trelloApi": {
+          "id": "iGoxLaBRJS0vebBH",
+          "name": "Trello account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Get Unread Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Text Classifier",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - Get Unread Messages": {
+      "main": [
+        [
+          {
+            "node": "Text Classifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text Classifier": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Add Soporte Label",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gmail - Add Ventas Label",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gmail - Add Reclamo Label",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gmail - Add Otros Label",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Add Estimación to message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - Add Ventas Label": {
+      "main": [
+        [
+          {
+            "node": "Remove label from message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - Add Soporte Label": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Message via HTTP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - Add Reclamo Label": {
+      "main": [
+        [
+          {
+            "node": "Remove label from message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - Add Otros Label": {
+      "main": [
+        [
+          {
+            "node": "Remove label from message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Estimación to message": {
+      "main": [
+        [
+          {
+            "node": "Remove label from message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove label from message": {
+      "main": [[]]
+    },
+    "Send WhatsApp Message via HTTP": {
+      "main": [
+        [
+          {
+            "node": "Create a card",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a card": {
+      "main": [
+        [
+          {
+            "node": "Remove label from message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "240683c1-c69d-495c-9af1-ade1f6a83f2e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "55f80296b0f7195a605b2bb2628620b65fcf6342621dcb56c8c15d13e6fedd39"
+  },
+  "id": "Pm02r3yYFucJ9VYs",
+  "tags": []
+}
