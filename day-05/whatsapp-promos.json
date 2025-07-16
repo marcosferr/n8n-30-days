@@ -1,92 +1,176 @@
 {
-  "name": "WhatsApp Promos Automation",
+  "name": "WhatsApp Promos Automation Fixed",
   "nodes": [
     {
       "parameters": {
-        "cronExpression": "0 9 * * *"
+        "triggerTimes": {
+          "item": [
+            {
+              "hour": 9
+            }
+          ]
+        }
       },
-      "id": "cron-trigger",
+      "id": "0118db00-db66-44ca-83c6-baf30ce4b7e0",
       "name": "Cron Trigger",
+      "position": [352, 320],
       "type": "n8n-nodes-base.cron",
-      "typeVersion": 1,
-      "position": [200, 300]
+      "typeVersion": 1
     },
     {
       "parameters": {
-        "operation": "read",
-        "sheetId": "{{ $env.SHEET_ID_PROMOS }}",
-        "range": "A:C"
+        "sheetId": "150KI2pfF6DEIRGn_yB4IcVfkT56T4OFEa5SAQ7a6sx0",
+        "range": "A:C",
+        "options": {}
       },
-      "id": "read-promos",
+      "id": "60f1050c-8eed-4ad1-b4d2-d86a1813b0ea",
       "name": "Read Promos Sheet",
+      "position": [560, 320],
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 2,
-      "position": [400, 300]
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2r0zh1UXYkP3IVdq",
+          "name": "Google Sheets account"
+        }
+      }
     },
     {
       "parameters": {
-        "functionCode": "return items.filter(item => item.json.Fecha === $now.format('YYYY-MM-DD'));"
+        "sheetId": "1QE8UwnisCXaMDswuc5eEYRDaIbPaUTcWYquflnZGaHk",
+        "range": "A:C",
+        "options": {}
       },
-      "id": "filter-date",
-      "name": "Filter by Date",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 1,
-      "position": [600, 300]
-    },
-    {
-      "parameters": {
-        "operation": "read",
-        "sheetId": "{{ $env.SHEET_ID_CLIENTES }}",
-        "range": "A:C"
-      },
-      "id": "read-clients",
+      "id": "7077a274-165f-4ef6-840f-93e9f6b23891",
       "name": "Read Clients Sheet",
+      "position": [960, 320],
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 2,
-      "position": [800, 300]
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2r0zh1UXYkP3IVdq",
+          "name": "Google Sheets account"
+        }
+      }
     },
     {
       "parameters": {
-        "functionCode": "const promo = $item(0).json; return items.map(client => ({ json: { ...client.json, ...promo } }));"
+        "method": "POST",
+        "url": "http://172.17.0.1:3000/send-message/",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message",
+              "value": "={{ $json.output }}"
+            },
+            {
+              "name": "to",
+              "value": "={{ $json.phone_number }}"
+            }
+          ]
+        },
+        "options": {}
       },
-      "id": "merge-data",
-      "name": "Merge Promo & Client",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 1,
-      "position": [1000, 300]
+      "id": "3bdd90eb-c023-407d-ae60-ab916a585953",
+      "name": "Send WhatsApp Message",
+      "position": [1328, 320],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2
     },
     {
       "parameters": {
-        "resource": "message",
-        "operation": "sendTemplate",
-        "from": "{{ $env.WHATSAPP_NUMBER_ID }}",
-        "to": "={{$json['Numero_Telefono']}}",
-        "templateName": "={{$json['Plantilla']}}",
-        "templateLanguage": "es_MX",
-        "templateParameters": ["={{$json['Nombre']}}", "={{$json['Apellido']}}"]
+        "jsCode": "// Get the promo data from first input (from promo sheet)\nconst promoData = $('Obtener Promo Hoy').all();\n\n// Get clients data from second input (from clients sheet)\nconst clientsData = $input.all();\n\n// If no promo for today, return empty\nif (!promoData || promoData.length === 0) {\n  return [];\n}\n\nconst todayPromo = promoData[0].json;\nconst template = todayPromo.Template;\n\n// Create output for each client with personalized message\nconst output = [];\n\nfor (const client of clientsData) {\n  const clientData = client.json;\n  \n  // Simple template rendering (replace {{ cliente }} with actual client name)\n  let personalizedMessage = template.replace(/{{\\s*cliente\\s*}}/gi, clientData.Cliente);\n  \n  output.push({\n    phone_number: clientData.Numero_Telefono,\n    client_name: clientData.Cliente,\n    template: template,\n    output: personalizedMessage,\n    promo_date: todayPromo.Fecha\n  });\n}\n\nreturn output;"
       },
-      "id": "send-whatsapp",
-      "name": "Send WhatsApp Promo",
-      "type": "n8n-nodes-base.whatsappBusinessCloud",
-      "typeVersion": 1,
-      "position": [1200, 300]
+      "id": "60da9fa6-aa12-4709-bacc-3863851bc767",
+      "name": "Map Promo to Client",
+      "position": [1136, 320],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get today's date in YYYY-MM-DD format\nconst today = new Date().toISOString().split('T')[0];\nconsole.log(\"Today\", today)\n// Filter promos for today's date\nconst todayPromos = $input.all().filter(item => {\n  const promoDate = item.json.Fecha;\n  return promoDate === today;\n});\n\n// Return today's promo or empty array if none found\nif (todayPromos.length > 0) {\n  return todayPromos;\n} else {\n  console.log(\"No Promos Found\")\n  // No promo for today - return empty to stop workflow\n  return [];\n}"
+      },
+      "id": "555a9451-9ee3-4786-8e62-0a27c9ec4ca5",
+      "name": "Obtener Promo Hoy",
+      "position": [752, 320],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
     }
   ],
+  "pinData": {},
   "connections": {
-    "cron-trigger": {
-      "main": [[{ "node": "read-promos", "type": "main", "index": 0 }]]
+    "Cron Trigger": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Read Promos Sheet",
+            "type": "main"
+          }
+        ]
+      ]
     },
-    "read-promos": {
-      "main": [[{ "node": "filter-date", "type": "main", "index": 0 }]]
+    "Map Promo to Client": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Send WhatsApp Message",
+            "type": "main"
+          }
+        ]
+      ]
     },
-    "filter-date": {
-      "main": [[{ "node": "read-clients", "type": "main", "index": 0 }]]
+    "Obtener Promo Hoy": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Read Clients Sheet",
+            "type": "main"
+          }
+        ]
+      ]
     },
-    "read-clients": {
-      "main": [[{ "node": "merge-data", "type": "main", "index": 0 }]]
+    "Read Clients Sheet": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Map Promo to Client",
+            "type": "main"
+          }
+        ]
+      ]
     },
-    "merge-data": {
-      "main": [[{ "node": "send-whatsapp", "type": "main", "index": 0 }]]
+    "Read Promos Sheet": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Obtener Promo Hoy",
+            "type": "main"
+          }
+        ]
+      ]
     }
-  }
+  },
+  "active": false,
+  "settings": {
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 3600,
+    "timezone": "UTC"
+  },
+  "versionId": "5a0b910c-8460-46e2-92aa-8cfad4ac61a4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "55f80296b0f7195a605b2bb2628620b65fcf6342621dcb56c8c15d13e6fedd39"
+  },
+  "id": "BWaUaQYfcJDIb9Bl",
+  "tags": []
 }
