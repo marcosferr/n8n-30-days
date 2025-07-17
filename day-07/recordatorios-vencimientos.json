@@ -1,0 +1,147 @@
+{
+  "name": "Recordatorios de Vencimientos - Estudio Contable",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "hour": 8
+            }
+          ]
+        }
+      },
+      "id": "0118db00-db66-44ca-83c6-baf30ce4b7e0",
+      "name": "Cron Trigger",
+      "position": [352, 320],
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "sheetId": "REPLACE_WITH_YOUR_SHEET_ID",
+        "range": "A:D",
+        "options": {}
+      },
+      "id": "60f1050c-8eed-4ad1-b4d2-d86a1813b0ea",
+      "name": "Read Clients Sheet",
+      "position": [560, 320],
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 2,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIALS_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get today's day number (1-31)\nconst today = new Date();\nconst todayDay = today.getDate();\nconsole.log(\"Today's day:\", todayDay);\n\n// Filter clients with expiration day matching today\nconst clientsWithExpirationToday = $input.all().filter(item => {\n  const clientData = item.json;\n  const expirationDay = clientData.Vencimiento;\n  \n  // Check if the expiration day matches today's day\n  // Handle both numeric and string inputs\n  const dayNumber = typeof expirationDay === 'string' ? parseInt(expirationDay) : expirationDay;\n  \n  return dayNumber === todayDay;\n});\n\n// Return clients with expiration day today or empty array if none found\nif (clientsWithExpirationToday.length > 0) {\n  console.log(`Found ${clientsWithExpirationToday.length} clients with expiration day ${todayDay}`);\n  return clientsWithExpirationToday;\n} else {\n  console.log(`No clients with expiration day ${todayDay}`);\n  return [];\n}"
+      },
+      "id": "555a9451-9ee3-4786-8e62-0a27c9ec4ca5",
+      "name": "Filter Expiration Day Today",
+      "position": [752, 320],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get clients data with expiration today\nconst clientsData = $input.all();\n\n// If no clients with expiration today, return empty\nif (!clientsData || clientsData.length === 0) {\n  return [];\n}\n\n// Create output for each client with personalized message\nconst output = [];\n\nfor (const client of clientsData) {\n  const clientData = client.json;\n  \n  // Create personalized message\n  const personalizedMessage = `Muy buenos días ${clientData.Nombre}. Se le recuerda que hoy vence su IVA por si tiene algunos comprobantes que entregar esperamos atentamente`;\n  \n  output.push({\n    phone_number: clientData.Numero,\n    client_name: clientData.Nombre,\n    last_name: clientData.Apellido,\n    expiration_date: clientData.Vencimiento,\n    message: personalizedMessage\n  });\n}\n\nreturn output;"
+      },
+      "id": "60da9fa6-aa12-4709-bacc-3863851bc767",
+      "name": "Create Personalized Messages",
+      "position": [960, 320],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.17.0.1:3000/send-message/",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "to",
+              "value": "={{ $json.phone_number }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3bdd90eb-c023-407d-ae60-ab916a585953",
+      "name": "Send WhatsApp Reminder",
+      "position": [1168, 320],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Cron Trigger": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Read Clients Sheet",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Read Clients Sheet": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Filter Expiration Day Today",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Filter Expiration Day Today": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Create Personalized Messages",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Create Personalized Messages": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Send WhatsApp Reminder",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 3600,
+    "timezone": "UTC"
+  },
+  "versionId": "5a0b910c-8460-46e2-92aa-8cfad4ac61a4",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "55f80296b0f7195a605b2bb2628620b65fcf6342621dcb56c8c15d13e6fedd39"
+  },
+  "id": "BWaUaQYfcJDIb9Bl",
+  "tags": []
+}
